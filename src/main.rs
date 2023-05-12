@@ -1,15 +1,19 @@
 mod theme;
 mod widget;
+mod widgets;
 
 use iced::widget::{button, column, container, row, scrollable, text};
-use iced::{window, Alignment, Application, Command, Length, Padding, Settings};
-use serde::Deserialize;
+use iced::{window, Application, Command, Length, Settings};
+
+use widgets::clipboard::{Clipboard, Error};
+
+use iced::alignment::Alignment;
 
 use theme::Theme;
-use widget::Element;
+use widget::{Element, Text};
 
 pub fn main() -> iced::Result {
-    ClipEvent::run(Settings {
+    ClipSkuy::run(Settings {
         window: window::Settings {
             max_size: Some((400, 400)),
             ..window::Settings::default()
@@ -19,36 +23,36 @@ pub fn main() -> iced::Result {
 }
 
 #[derive(Debug)]
-enum ClipEvent {
+enum ClipSkuy {
     Loading,
     Loaded { clips: Vec<Clipboard> },
     Errored,
 }
 
 #[derive(Debug, Clone)]
-enum Message {
+pub enum Message {
     ClipboardFetched(Result<Vec<Clipboard>, Error>),
     Search,
 }
 
-impl Application for ClipEvent {
+impl Application for ClipSkuy {
     type Message = Message;
     type Theme = Theme;
     type Executor = iced::executor::Default;
     type Flags = ();
 
-    fn new(_flags: ()) -> (ClipEvent, Command<Message>) {
+    fn new(_flags: ()) -> (ClipSkuy, Command<Message>) {
         (
-            ClipEvent::Loading,
+            ClipSkuy::Loading,
             Command::perform(Clipboard::fetch_clips(), Message::ClipboardFetched),
         )
     }
 
     fn title(&self) -> String {
         let subtitle = match self {
-            ClipEvent::Loading => String::from("Loading"),
-            ClipEvent::Loaded { clips, .. } => String::from(clips.len().to_string()),
-            ClipEvent::Errored { .. } => String::from("Whoops!"),
+            ClipSkuy::Loading => String::from("Loading"),
+            ClipSkuy::Loaded { clips, .. } => String::from(clips.len().to_string()),
+            ClipSkuy::Errored { .. } => String::from("Whoops!"),
         };
 
         format!("{subtitle} - ClipSkuy")
@@ -57,19 +61,19 @@ impl Application for ClipEvent {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::ClipboardFetched(Ok(clips)) => {
-                *self = ClipEvent::Loaded { clips };
+                *self = ClipSkuy::Loaded { clips };
 
                 Command::none()
             }
             Message::ClipboardFetched(Err(_error)) => {
-                *self = ClipEvent::Errored;
+                *self = ClipSkuy::Errored;
 
                 Command::none()
             }
             Message::Search => match self {
-                ClipEvent::Loading => Command::none(),
+                ClipSkuy::Loading => Command::none(),
                 _ => {
-                    *self = ClipEvent::Loading;
+                    *self = ClipSkuy::Loading;
 
                     Command::perform(Clipboard::fetch_clips(), Message::ClipboardFetched)
                 }
@@ -79,10 +83,10 @@ impl Application for ClipEvent {
 
     fn view(&self) -> Element<Message> {
         let content = match self {
-            ClipEvent::Loading => {
+            ClipSkuy::Loading => {
                 column![text("Fetching clipboard from server").size(40),].width(Length::Shrink)
             }
-            ClipEvent::Loaded { clips } => column![
+            ClipSkuy::Loaded { clips } => column![
                 row![text("Clipboard").size(24)].padding(16),
                 column(clips.iter().map(|clip| clip.view()).collect())
                     .width(Length::Fill)
@@ -90,7 +94,7 @@ impl Application for ClipEvent {
             ]
             .into(),
 
-            ClipEvent::Errored => column![
+            ClipSkuy::Errored => column![
                 text("Whoops! Something went wrong...").size(40),
                 button("Try again").on_press(Message::Search)
             ]
@@ -102,76 +106,5 @@ impl Application for ClipEvent {
             container(content).width(Length::Fill).center_x(),
         ))
         .into()
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct Clipboard {
-    id: String,
-    content: String,
-    timestamp: String,
-}
-
-impl Clipboard {
-    fn view(&self) -> Element<Message> {
-        row![
-            row![text(&self.content[..10]).size(20),]
-                .width(Length::Fill)
-                .align_items(Alignment::Start),
-            row![
-                button("Star")
-                    .on_press(Message::Search)
-                    .style(theme::Button::Primary),
-                button("Delete")
-                    .on_press(Message::Search)
-                    .style(theme::Button::Danger),
-            ]
-            .align_items(Alignment::End)
-            .spacing(8)
-        ]
-        .width(Length::Fill)
-        .padding(Padding::from([0, 16, 16, 16]))
-        .into()
-    }
-
-    async fn fetch_clips() -> Result<Vec<Clipboard>, Error> {
-        #[derive(Deserialize)]
-        struct Todo {
-            id: u32,
-            title: String,
-            completed: bool,
-        }
-
-        let fetch_entry = async {
-            let url = format!("https://jsonplaceholder.typicode.com/todos?_page=0&_limit=10");
-
-            reqwest::get(&url).await?.json().await
-        };
-
-        let todos: Vec<Todo> = fetch_entry.await?;
-
-        let clips = todos
-            .iter()
-            .map(|todo| Clipboard {
-                id: todo.id.to_string(),
-                content: todo.title.to_string(),
-                timestamp: todo.completed.to_string(),
-            })
-            .collect();
-
-        Ok(clips)
-    }
-}
-
-#[derive(Debug, Clone)]
-enum Error {
-    APIError,
-}
-
-impl From<reqwest::Error> for Error {
-    fn from(error: reqwest::Error) -> Error {
-        dbg!(error);
-
-        Error::APIError
     }
 }
