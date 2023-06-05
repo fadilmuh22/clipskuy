@@ -110,6 +110,7 @@ pub enum Button {
     Primary,
     Secondary,
     Danger,
+    Container,
 }
 
 impl button::StyleSheet for Theme {
@@ -130,6 +131,10 @@ impl button::StyleSheet for Theme {
             },
             Button::Danger => button::Appearance {
                 background: self.error.into(),
+                ..Default::default()
+            },
+            Button::Container => button::Appearance {
+                background: Color::TRANSPARENT.into(),
                 ..Default::default()
             },
         }

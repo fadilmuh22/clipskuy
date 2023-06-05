@@ -1,11 +1,13 @@
 mod theme;
+mod types;
 mod widget;
 mod widgets;
 
-use iced::widget::{button, column, container, row, scrollable, text};
+use iced::widget::{button, column, container, mouse_area, row, scrollable, text};
 use iced::{window, Application, Command, Length, Settings};
 
-use widgets::clipboard::{Clipboard, Error};
+use widgets::clip_detail::ClipDetail;
+use widgets::clip_item::{ClipItem, Error};
 
 use iced::alignment::Alignment;
 
@@ -25,13 +27,15 @@ pub fn main() -> iced::Result {
 #[derive(Debug)]
 enum ClipSkuy {
     Loading,
-    Loaded { clips: Vec<Clipboard> },
+    ListLoaded { clip_item_list: Vec<ClipItem> },
+    Detail { clip_detail: ClipDetail },
     Errored,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    ClipboardFetched(Result<Vec<Clipboard>, Error>),
+    ClipboardFetched(Result<Vec<ClipItem>, Error>),
+    ClipDetailNavigate { clip_detail: ClipDetail },
     Search,
 }
 
@@ -44,14 +48,22 @@ impl Application for ClipSkuy {
     fn new(_flags: ()) -> (ClipSkuy, Command<Message>) {
         (
             ClipSkuy::Loading,
-            Command::perform(Clipboard::fetch_clips(), Message::ClipboardFetched),
+            Command::perform(ClipItem::fetch_clips(), Message::ClipboardFetched),
         )
     }
 
     fn title(&self) -> String {
         let subtitle = match self {
             ClipSkuy::Loading => String::from("Loading"),
-            ClipSkuy::Loaded { clips, .. } => String::from(clips.len().to_string()),
+            ClipSkuy::ListLoaded {
+                clip_item_list: clips,
+                ..
+            } => String::from(clips.len().to_string()),
+            ClipSkuy::Detail { clip_detail } => String::from(format!(
+                "{} - {}",
+                clip_detail.clip.id,
+                &clip_detail.clip.content[..5]
+            )),
             ClipSkuy::Errored { .. } => String::from("Whoops!"),
         };
 
@@ -61,7 +73,9 @@ impl Application for ClipSkuy {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::ClipboardFetched(Ok(clips)) => {
-                *self = ClipSkuy::Loaded { clips };
+                *self = ClipSkuy::ListLoaded {
+                    clip_item_list: clips,
+                };
 
                 Command::none()
             }
@@ -75,9 +89,14 @@ impl Application for ClipSkuy {
                 _ => {
                     *self = ClipSkuy::Loading;
 
-                    Command::perform(Clipboard::fetch_clips(), Message::ClipboardFetched)
+                    Command::perform(ClipItem::fetch_clips(), Message::ClipboardFetched)
                 }
             },
+            Message::ClipDetailNavigate { clip_detail } => {
+                *self = ClipSkuy::Detail { clip_detail };
+
+                Command::none()
+            }
         }
     }
 
@@ -86,20 +105,22 @@ impl Application for ClipSkuy {
             ClipSkuy::Loading => {
                 column![text("Fetching clipboard from server").size(40),].width(Length::Shrink)
             }
-            ClipSkuy::Loaded { clips } => column![
+            ClipSkuy::ListLoaded { clip_item_list } => column![
                 row![text("Clipboard").size(24)].padding(16),
-                column(clips.iter().map(|clip| clip.view()).collect())
+                column(clip_item_list.iter().map(|clip| clip.view()).collect())
                     .width(Length::Fill)
                     .align_items(Alignment::Center)
             ]
             .into(),
-
             ClipSkuy::Errored => column![
                 text("Whoops! Something went wrong...").size(40),
                 button("Try again").on_press(Message::Search)
             ]
             .spacing(8)
             .align_items(Alignment::Center),
+            ClipSkuy::Detail { clip_detail } => {
+                column![clip_detail.view()].width(Length::Fill).into()
+            }
         };
 
         container(scrollable(
