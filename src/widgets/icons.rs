@@ -1,7 +1,7 @@
 use iced::widget::text;
 use iced::{alignment, Font};
 
-use crate::Text;
+use crate::widget_types::Text;
 
 // Fonts
 const ICONS: Font = Font::External {

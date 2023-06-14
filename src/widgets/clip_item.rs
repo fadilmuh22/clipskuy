@@ -1,13 +1,14 @@
 use iced::alignment::Alignment;
 use iced::widget::{button, row, text};
-use iced::{event, mouse, Length, Padding};
+use iced::{Length, Padding};
 use serde::Deserialize;
 
 use super::clip_detail::ClipDetail;
 use super::icons::{delete_icon, star_empty_icon, star_fill_icon};
+use crate::clipskuy::Message;
 use crate::theme;
 use crate::types::Clip;
-use crate::{Element, Message};
+use crate::widget_types::Element;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ClipItem {
