@@ -1,7 +1,6 @@
 mod clipskuy;
-mod theme;
+mod themes;
 mod types;
-mod widget_types;
 mod widgets;
 
 use dotenv::dotenv;

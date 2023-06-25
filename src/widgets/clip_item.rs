@@ -1,14 +1,14 @@
 use iced::alignment::Alignment;
 use iced::widget::{button, row, text};
-use iced::{Length, Padding};
+use iced::{clipboard, Length, Padding};
 use serde::Deserialize;
 
 use super::clip_detail::ClipDetail;
 use super::icons::{delete_icon, star_empty_icon, star_fill_icon};
 use crate::clipskuy::Message;
-use crate::theme;
+use crate::themes::theme;
+use crate::themes::types::Element;
 use crate::types::Clip;
-use crate::widget_types::Element;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ClipItem {
@@ -18,6 +18,18 @@ pub struct ClipItem {
 impl From<Clip> for ClipItem {
     fn from(clip: Clip) -> Self {
         Self { clip: clip }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ClipState {
+    Idle,
+    Editing,
+}
+
+impl Default for ClipState {
+    fn default() -> Self {
+        Self::Idle
     }
 }
 

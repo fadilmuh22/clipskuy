@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::theme::Theme;
+use super::theme::Theme;
 
 pub type Renderer = iced::Renderer<Theme>;
 pub type Element<'a, Message> = iced::Element<'a, Message, Renderer>;

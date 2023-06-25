@@ -1,7 +1,7 @@
 use iced::widget::text;
 use iced::{alignment, Font};
 
-use crate::widget_types::Text;
+use crate::themes::types::Text;
 
 // Fonts
 const ICONS: Font = Font::External {
@@ -14,6 +14,10 @@ pub fn icon(unicode: char) -> Text<'static> {
         .font(ICONS)
         .width(20)
         .horizontal_alignment(alignment::Horizontal::Center)
+}
+
+pub fn back_icon() -> Text<'static> {
+    icon('\u{E803}')
 }
 
 pub fn star_empty_icon() -> Text<'static> {

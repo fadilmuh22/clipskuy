@@ -3,11 +3,11 @@ use iced::widget::{button, column, row, text};
 use iced::Length;
 use serde::Deserialize;
 
-use super::icons::{delete_icon, edit_icon, star_empty_icon, star_fill_icon};
+use super::icons::{back_icon, delete_icon, star_empty_icon, star_fill_icon};
 use crate::clipskuy::Message;
-use crate::theme;
+use crate::themes::theme;
+use crate::themes::types::Element;
 use crate::types::Clip;
-use crate::widget_types::Element;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ClipDetail {
@@ -19,7 +19,7 @@ impl ClipDetail {
         column![
             row![
                 row![
-                    button(edit_icon()).on_press(Message::Search),
+                    button(back_icon()).on_press(Message::Search),
                     text("Detail").size(24)
                 ]
                 .spacing(8)
@@ -33,12 +33,12 @@ impl ClipDetail {
                     .style(theme::Button::Primary),
                     button(delete_icon())
                         .on_press(Message::Search)
-                        .style(theme::Button::Danger),
+                        .style(theme::Button::Primary),
                 ]
                 .spacing(8)
                 .align_items(Alignment::End)
             ],
-            row![text(&self.clip.content).size(20)].align_items(Alignment::Start),
+            row![text(&self.clip.content).size(20),].align_items(Alignment::Start),
         ]
         .padding(32)
         .spacing(16)

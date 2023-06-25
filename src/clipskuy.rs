@@ -1,12 +1,12 @@
 use iced::alignment::Alignment;
-use iced::widget::{button, column, container, row, scrollable, text};
-use iced::{Application, Command, Length};
+use iced::event::{self, Event};
+use iced::widget::{button, column, container, focus_next, focus_previous, row, scrollable, text};
+use iced::{keyboard, subscription, Application, Command, Length, Subscription};
 
+use crate::themes::theme::Theme;
+use crate::themes::types::Element;
 use crate::widgets::clip_detail::ClipDetail;
 use crate::widgets::clip_item::{ClipItem, Error};
-
-use crate::theme::Theme;
-use crate::widget_types::Element;
 
 #[derive(Debug)]
 pub enum ClipSkuy {
@@ -21,6 +21,7 @@ pub enum Message {
     ClipboardFetched(Result<Vec<ClipItem>, Error>),
     ClipDetailNavigate { clip_detail: ClipDetail },
     Search,
+    TabPressed { shift: bool },
 }
 
 impl Application for ClipSkuy {
@@ -81,6 +82,13 @@ impl Application for ClipSkuy {
 
                 Command::none()
             }
+            Message::TabPressed { shift } => {
+                if shift {
+                    return focus_previous();
+                } else {
+                    return focus_next();
+                }
+            }
         }
     }
 
@@ -111,5 +119,21 @@ impl Application for ClipSkuy {
             container(content).width(Length::Fill).center_x(),
         ))
         .into()
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        subscription::events_with(|event, status| match (event, status) {
+            (
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key_code: keyboard::KeyCode::Tab,
+                    modifiers,
+                    ..
+                }),
+                event::Status::Ignored,
+            ) => Some(Message::TabPressed {
+                shift: modifiers.shift(),
+            }),
+            _ => None,
+        })
     }
 }
