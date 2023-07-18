@@ -1,14 +1,14 @@
 use iced::alignment::Alignment;
+use iced::theme::Button;
 use iced::widget::{button, row, text};
-use iced::{clipboard, Length, Padding};
+use iced::{Element, Length, Padding};
 use serde::Deserialize;
 
 use super::clip_detail::ClipDetail;
 use super::icons::{delete_icon, star_empty_icon, star_fill_icon};
 use crate::clipskuy::Message;
-use crate::themes::theme;
-use crate::themes::types::Element;
-use crate::types::Clip;
+use crate::themes::theme::ContainerButton;
+use crate::types::{Clip, Error};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ClipItem {
@@ -18,18 +18,6 @@ pub struct ClipItem {
 impl From<Clip> for ClipItem {
     fn from(clip: Clip) -> Self {
         Self { clip: clip }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum ClipState {
-    Idle,
-    Editing,
-}
-
-impl Default for ClipState {
-    fn default() -> Self {
-        Self::Idle
     }
 }
 
@@ -46,10 +34,10 @@ impl ClipItem {
                         false => star_empty_icon(),
                     })
                     .on_press(Message::Search)
-                    .style(theme::Button::Primary),
+                    .style(Button::Primary),
                     button(delete_icon())
                         .on_press(Message::Search)
-                        .style(theme::Button::Danger),
+                        .style(Button::Destructive),
                 ]
                 .align_items(Alignment::End)
                 .spacing(8)
@@ -57,8 +45,8 @@ impl ClipItem {
             .width(Length::Fill)
             .padding(Padding::from([0, 16, 16, 16])),
         )
-        .style(theme::Button::Container)
-        .on_press(Message::ClipDetailNavigate {
+        .style(Button::Custom(Box::new(ContainerButton)))
+        .on_press(Message::DetailNavigate {
             clip_detail: ClipDetail {
                 clip: self.clip.clone(),
             },
@@ -95,18 +83,5 @@ impl ClipItem {
             .collect::<Vec<ClipItem>>();
 
         Ok(clip_item_list)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum Error {
-    APIError,
-}
-
-impl From<reqwest::Error> for Error {
-    fn from(error: reqwest::Error) -> Error {
-        dbg!(error);
-
-        Error::APIError
     }
 }

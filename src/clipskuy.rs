@@ -1,46 +1,61 @@
+use once_cell::sync::Lazy;
+
 use iced::alignment::Alignment;
 use iced::event::{self, Event};
-use iced::widget::{button, column, container, focus_next, focus_previous, row, scrollable, text};
-use iced::{keyboard, subscription, Application, Command, Length, Subscription};
+use iced::widget::{
+    button, column, container, focus_next, focus_previous, row, scrollable, text, text_input,
+};
+use iced::{keyboard, subscription, Application, Command, Element, Length, Subscription};
 
-use crate::themes::theme::Theme;
-use crate::themes::types::Element;
+use crate::types::{Error, Filter};
 use crate::widgets::clip_detail::ClipDetail;
-use crate::widgets::clip_item::{ClipItem, Error};
+use crate::widgets::clip_item::ClipItem;
 
 #[derive(Debug)]
 pub enum ClipSkuy {
     Loading,
-    ListLoaded { clip_item_list: Vec<ClipItem> },
+    Loaded { clip_item_list: Vec<ClipItem> },
     Detail { clip_detail: ClipDetail },
     Errored,
 }
 
+#[derive(Debug, Default)]
+struct State {
+    input_value: String,
+    filter: Filter,
+    tasks: Vec<ClipItem>,
+    dirty: bool,
+    saving: bool,
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
-    ClipboardFetched(Result<Vec<ClipItem>, Error>),
-    ClipDetailNavigate { clip_detail: ClipDetail },
+    Loaded(Result<Vec<ClipItem>, Error>),
+    DetailNavigate { clip_detail: ClipDetail },
+    InputChanged(String),
     Search,
     TabPressed { shift: bool },
 }
 
+static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
+
 impl Application for ClipSkuy {
     type Message = Message;
-    type Theme = Theme;
+    type Theme = iced::theme::Theme;
     type Executor = iced::executor::Default;
     type Flags = ();
 
     fn new(_flags: ()) -> (ClipSkuy, Command<Message>) {
         (
             ClipSkuy::Loading,
-            Command::perform(ClipItem::fetch_clips(), Message::ClipboardFetched),
+            Command::perform(ClipItem::fetch_clips(), Message::Loaded),
         )
     }
 
     fn title(&self) -> String {
         let subtitle = match self {
             ClipSkuy::Loading => String::from("Loading"),
-            ClipSkuy::ListLoaded {
+            ClipSkuy::Loaded {
                 clip_item_list: clips,
                 ..
             } => String::from(clips.len().to_string()),
@@ -56,39 +71,61 @@ impl Application for ClipSkuy {
     }
 
     fn update(&mut self, message: Message) -> Command<Message> {
-        match message {
-            Message::ClipboardFetched(Ok(clips)) => {
-                *self = ClipSkuy::ListLoaded {
-                    clip_item_list: clips,
+        match self {
+            ClipSkuy::Loading => {
+                match message {
+                    Message::Loaded(Ok(clip_item_list)) => {
+                        *self = ClipSkuy::Loaded { clip_item_list };
+                    }
+                    Message::Loaded(Err(_)) => {
+                        *self = ClipSkuy::Errored;
+                    }
+                    _ => {}
                 };
 
-                Command::none()
+                text_input::focus(INPUT_ID.clone())
             }
-            Message::ClipboardFetched(Err(_error)) => {
-                *self = ClipSkuy::Errored;
+            ClipSkuy::Loaded { clip_item_list } => {
+                let command = match message {
+                    Message::Loaded(Ok(clips)) => {
+                        *self = ClipSkuy::Loaded {
+                            clip_item_list: clips,
+                        };
 
-                Command::none()
-            }
-            Message::Search => match self {
-                ClipSkuy::Loading => Command::none(),
-                _ => {
-                    *self = ClipSkuy::Loading;
+                        Command::none()
+                    }
+                    Message::Loaded(Err(_error)) => {
+                        *self = ClipSkuy::Errored;
 
-                    Command::perform(ClipItem::fetch_clips(), Message::ClipboardFetched)
-                }
-            },
-            Message::ClipDetailNavigate { clip_detail } => {
-                *self = ClipSkuy::Detail { clip_detail };
+                        Command::none()
+                    }
+                    Message::InputChanged(_) => todo!(),
+                    Message::Search => match self {
+                        ClipSkuy::Loading => Command::none(),
+                        _ => {
+                            *self = ClipSkuy::Loading;
 
-                Command::none()
+                            Command::perform(ClipItem::fetch_clips(), Message::Loaded)
+                        }
+                    },
+                    Message::DetailNavigate { clip_detail } => {
+                        *self = ClipSkuy::Detail { clip_detail };
+
+                        Command::none()
+                    }
+                    Message::TabPressed { shift } => {
+                        if shift {
+                            return focus_previous();
+                        } else {
+                            return focus_next();
+                        }
+                    }
+                };
+
+                Command::batch(vec![command])
             }
-            Message::TabPressed { shift } => {
-                if shift {
-                    return focus_previous();
-                } else {
-                    return focus_next();
-                }
-            }
+            ClipSkuy::Detail { clip_detail } => todo!(),
+            ClipSkuy::Errored => todo!(),
         }
     }
 
@@ -97,7 +134,7 @@ impl Application for ClipSkuy {
             ClipSkuy::Loading => {
                 column![text("Fetching clipboard from server").size(40),].width(Length::Shrink)
             }
-            ClipSkuy::ListLoaded { clip_item_list } => column![
+            ClipSkuy::Loaded { clip_item_list } => column![
                 row![text("Clipboard").size(24)].padding(16),
                 column(clip_item_list.iter().map(|clip| clip.view()).collect())
                     .width(Length::Fill)
@@ -115,8 +152,19 @@ impl Application for ClipSkuy {
             }
         };
 
+        let value = "value";
+
+        let search_input = text_input("Search", value)
+            .id(INPUT_ID.clone())
+            .on_input(Message::InputChanged)
+            .on_submit(Message::Search)
+            .padding(15)
+            .size(30);
+
+        let wrapper = column![search_input, content];
+
         container(scrollable(
-            container(content).width(Length::Fill).center_x(),
+            container(wrapper).width(Length::Fill).center_x(),
         ))
         .into()
     }

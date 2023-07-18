@@ -1,7 +1,5 @@
-use iced::widget::text;
+use iced::widget::{text, Text};
 use iced::{alignment, Font};
-
-use crate::themes::types::Text;
 
 // Fonts
 const ICONS: Font = Font::External {
